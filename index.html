@@ -1,10 +1,172 @@
-<div class="container">
-  <div class="input-container">
-    <textarea id="inputText1" placeholder="First text here"></textarea>
-    <div id="outputText1" class="output"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Number Highlighter</title>
+  <style>
+    .container {
+      display: flex;
+    }
+
+    .input-container {
+      flex: 1;
+      margin: 5px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 150px;
+    }
+
+    .output {
+      white-space: pre-wrap;
+      font-family: monospace;
+      border: 1px solid #ccc;
+      padding: 5px;
+      min-height: 150px;
+      margin-top: 5px;
+    }
+
+    .number.emphasized {
+      font-weight: bold;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="input-container">
+      <textarea id="inputText1" placeholder="First text here"></textarea>
+      <div id="outputText1" class="output"></div>
+    </div>
+    <div class="input-container">
+      <textarea id="inputText2" placeholder="Second text here"></textarea>
+      <div id="outputText2" class="output"></div>
+    </div>
   </div>
-  <div class="input-container">
-    <textarea id="inputText2" placeholder="Second text here"></textarea>
-    <div id="outputText2" class="output"></div>
-  </div>
-</div>
+
+  <script>
+    var colors = [
+      "#d03c22", "#3a5cd7", "#5ac74a", "#7951d0", "#a2c635", "#5f77f3",
+      "#bdbc21", "#3c4dbb", "#4a9d23", "#a245ba", "#40ca6a", "#cd3fa6",
+      "#7bac31", "#b073ee", "#40a149", "#e477dc", "#4fcb8f", "#ba2a7e",
+      "#8ec86e", "#2f65d0", "#dbb037", "#6288ef", "#e79429", "#5c51b1",
+      "#bab848", "#7d4daf", "#879526", "#8c7ce2", "#3c782c", "#e53f7e",
+      "#4fa867", "#e43e59", "#47cebe", "#c52439", "#3db6c0", "#e5682b",
+      "#5c9deb", "#d17b32", "#5064be", "#997f1b", "#644999", "#d2a149",
+      "#2967ae", "#a66f18", "#497fca", "#a24715", "#31a5db", "#eb6452",
+      "#61c4ef", "#b94832", "#35977a", "#e5699f", "#428c5a", "#a74f9b",
+      "#757a1d", "#b67fd5", "#516615", "#8b67b3", "#799b51", "#494b93",
+      "#b0ba73", "#6462ad", "#695f17", "#b4a3eb", "#415a1f", "#d297d9",
+      "#306a3c", "#ad3361", "#70bd95", "#b0353d", "#2f7b63", "#e2766f",
+      "#1a6447", "#d885b9", "#597236", "#7d4586", "#988c49", "#355799",
+      "#eb9167", "#377da9", "#ba6745", "#659ccc", "#845d1f", "#91a2e3",
+      "#585c26", "#8883c4", "#deb178", "#445082", "#bb8553", "#72619d",
+      "#766f3a", "#5d679c", "#975c30", "#975681", "#896338", "#d26a80",
+      "#874327", "#ea959e", "#914357", "#ab5856"
+    ];
+
+    function processText() {
+      var text1 = document.getElementById('inputText1').value;
+      var text2 = document.getElementById('inputText2').value;
+
+      // Helper: Escape HTML
+      function escapeHtml(str) {
+        return str.replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;");
+      }
+
+      // Extract numbers from text
+      function extractNumbers(text) {
+        var numberRegex = /\b\d+\b/g;
+        var numbers = [];
+        var match;
+        while ((match = numberRegex.exec(text)) !== null) {
+          numbers.push(match[0]);
+        }
+        return numbers;
+      }
+
+      // Frequency map of numbers in the first field
+      var numbers1 = extractNumbers(text1);
+      var freqMap1 = numbers1.reduce((acc, num) => {
+        acc[num] = (acc[num] || 0) + 1;
+        return acc;
+      }, {});
+
+      // Extract numbers in the second field
+      var numbers2 = new Set(extractNumbers(text2));
+
+      // Determine which numbers to color
+      var numbersToColor = new Set();
+      Object.keys(freqMap1).forEach(num => {
+        if (freqMap1[num] > 1 || numbers2.has(num)) {
+          numbersToColor.add(num);
+        }
+      });
+
+      // Assign colors to these numbers
+      var colorMap = {};
+      Array.from(numbersToColor).forEach((num, index) => {
+        colorMap[num] = colors[index % colors.length];
+      });
+
+      // Process text to wrap numbers with spans
+      function processSingleText(text) {
+        var processedText = '';
+        var lastIndex = 0;
+        var positions = [];
+        var numberRegex = /\b\d+\b/g;
+        var match;
+        while ((match = numberRegex.exec(text)) !== null) {
+          positions.push({ start: match.index, end: numberRegex.lastIndex, num: match[0] });
+        }
+
+        positions.forEach(pos => {
+          processedText += escapeHtml(text.substring(lastIndex, pos.start));
+          var num = pos.num;
+          if (numbersToColor.has(num)) {
+            processedText += '<span class="number" data-number="' + num + '" style="color:' + colorMap[num] + '">' + num + '</span>';
+          } else {
+            processedText += escapeHtml(num);
+          }
+          lastIndex = pos.end;
+        });
+
+        processedText += escapeHtml(text.substring(lastIndex));
+        return processedText;
+      }
+
+      // Update the output fields
+      document.getElementById('outputText1').innerHTML = processSingleText(text1);
+      document.getElementById('outputText2').innerHTML = processSingleText(text2);
+    }
+
+    // Event listeners
+    document.getElementById('inputText1').addEventListener('input', processText);
+    document.getElementById('inputText2').addEventListener('input', processText);
+
+    // Hover functionality
+    document.addEventListener('mouseover', function(e) {
+      if (e.target && e.target.classList.contains('number')) {
+        var num = e.target.getAttribute('data-number');
+        var spans = document.querySelectorAll('span[data-number="' + num + '"]');
+        spans.forEach(function(span) {
+          span.classList.add('emphasized');
+        });
+      }
+    });
+    document.addEventListener('mouseout', function(e) {
+      if (e.target && e.target.classList.contains('number')) {
+        var num = e.target.getAttribute('data-number');
+        var spans = document.querySelectorAll('span[data-number="' + num + '"]');
+        spans.forEach(function(span) {
+          span.classList.remove('emphasized');
+        });
+      }
+    });
+  </script>
+</body>
+</html>
